@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: contract-manager-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: contract_manager
+      POSTGRES_USER: contract_user
+      POSTGRES_PASSWORD: contract_pass
+    volumes:
+      - contract_manager_pgdata:/var/lib/postgresql/data
+
+volumes:
+  contract_manager_pgdata:
