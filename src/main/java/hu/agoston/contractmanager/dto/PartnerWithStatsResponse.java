@@ -1,10 +1,12 @@
 package hu.agoston.contractmanager.dto;
 
-public record PartnerResponse(
+public record PartnerWithStatsResponse(
         Long id,
         String name,
         String taxNumber,
         String address,
         String email,
-        String phone
+        String phone,
+        long activeContracts,
+        long expiredContracts
 ) {}

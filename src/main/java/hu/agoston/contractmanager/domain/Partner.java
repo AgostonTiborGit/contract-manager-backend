@@ -1,53 +1,38 @@
 package hu.agoston.contractmanager.domain;
 
 import jakarta.persistence.*;
-import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
-@Table(name = "partners")
+@Getter
+@Setter
+@NoArgsConstructor
+@Table(
+        name = "partners",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = "tax_number")
+        }
+)
 public class Partner {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
-    private String email;
+
+    @Column(name = "tax_number", nullable = false, length = 16)
     private String taxNumber;
+
+    @Column
     private String address;
 
-    @OneToMany(mappedBy = "partner", fetch = FetchType.LAZY)
-    private List<Contract> contracts;
+    @Column
+    private String email;
 
-    protected Partner() {
-    }
-
-    public Partner(String name, String email, String taxNumber, String address) {
-        this.name = name;
-        this.email = email;
-        this.taxNumber = taxNumber;
-        this.address = address;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public String getTaxNumber() {
-        return taxNumber;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    // FONTOS: nincs getContracts()
+    @Column
+    private String phone;
 }

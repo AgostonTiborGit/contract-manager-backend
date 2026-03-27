@@ -2,6 +2,7 @@ package hu.agoston.contractmanager.security;
 
 import hu.agoston.contractmanager.domain.User;
 import hu.agoston.contractmanager.repository.UserRepository;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,21 +21,23 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public UserDetails loadUserByUsername(String email) {
 
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found with email: " + email)
+                        new UsernameNotFoundException("Invalid email or password")
                 );
 
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                user.isEnabled(),
-                true,
-                true,
-                true,
-                List.of(new SimpleGrantedAuthority(user.getRole().name()))
+        List<GrantedAuthority> authorities = List.of(
+                new SimpleGrantedAuthority(user.getRole().name())
         );
+
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail())
+                .password(user.getPassword())
+                .authorities(authorities)
+                .accountLocked(!user.isEnabled())
+                .disabled(!user.isEnabled())
+                .build();
     }
 }

@@ -154,9 +154,10 @@ public class ContractService {
         return new PartnerResponse(
                 partner.getId(),
                 partner.getName(),
-                partner.getEmail(),
                 partner.getTaxNumber(),
-                partner.getAddress()
+                partner.getAddress(),
+                partner.getEmail(),
+                partner.getPhone()
         );
     }
 }
