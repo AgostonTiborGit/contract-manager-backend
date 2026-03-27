@@ -8,13 +8,18 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public interface ContractRepository extends JpaRepository<Contract, Long> {
 
-    // összes szerződés partnerhez
+    /* ================= COUNT BY PARTNER ================= */
+
+    // Megmondja, hogy egy partnerhez összesen hány szerződés tartozik.
     long countByPartnerId(Long partnerId);
 
-    // aktív szerződések száma
+    /* ================= ACTIVE CONTRACT COUNT ================= */
+
+    // Aktívnak azt tekintjük, ahol a mai nap a kezdő és záró dátum közé esik.
     @Query("""
         select count(c)
         from Contract c
@@ -26,7 +31,9 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
             @Param("today") LocalDate today
     );
 
-    // lejárt szerződések száma
+    /* ================= EXPIRED CONTRACT COUNT ================= */
+
+    // Lejárt szerződés: endDate kisebb, mint a mai nap.
     @Query("""
         select count(c)
         from Contract c
@@ -38,7 +45,9 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
             @Param("today") LocalDate today
     );
 
-    // partnerhez tartozó összes szerződés törlése
+    /* ================= DELETE BY PARTNER ================= */
+
+    // Partner törlésénél előbb az összes hozzá tartozó szerződést töröljük.
     @Modifying
     @Transactional
     @Query("""
@@ -46,4 +55,9 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
         where c.partner.id = :partnerId
     """)
     void deleteByPartnerId(@Param("partnerId") Long partnerId);
+
+    /* ================= LIST BY PARTNER ================= */
+
+    // Partnerhez tartozó szerződések lekérdezése, legfrissebb kezdési dátummal elöl.
+    List<Contract> findByPartnerIdOrderByStartDateDesc(Long partnerId);
 }

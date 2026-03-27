@@ -32,6 +32,10 @@ public class ContractService {
         this.partnerRepository = partnerRepository;
     }
 
+    /* ================= QUERY: ALL CONTRACTS ================= */
+
+    // Teljes szerződéslista lekérdezése.
+    // Később ebből lehet majd globális contract lista oldal a frontendben.
     @Transactional(readOnly = true)
     public List<ContractResponse> getAll() {
         return contractRepository.findAll(Sort.by(Sort.Direction.DESC, "startDate"))
@@ -40,6 +44,9 @@ public class ContractService {
                 .toList();
     }
 
+    /* ================= QUERY: SINGLE CONTRACT ================= */
+
+    // Egy szerződés részletes lekérdezése ID alapján.
     @Transactional(readOnly = true)
     public ContractDetailsResponse getById(Long id) {
         Contract contract = contractRepository.findById(id)
@@ -50,6 +57,25 @@ public class ContractService {
         return toDetailsResponse(contract);
     }
 
+    /* ================= QUERY: CONTRACTS OF A PARTNER ================= */
+
+    // Egy partner összes szerződésének lekérdezése.
+    // Előbb ellenőrizzük, hogy a partner tényleg létezik-e.
+    @Transactional(readOnly = true)
+    public List<ContractResponse> getByPartnerId(Long partnerId) {
+        if (!partnerRepository.existsById(partnerId)) {
+            throw new NotFoundException("Partner not found with id: " + partnerId);
+        }
+
+        return contractRepository.findByPartnerIdOrderByStartDateDesc(partnerId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /* ================= COMMAND: CREATE ================= */
+
+    // Új szerződés létrehozása.
     @Transactional
     public void create(CreateContractRequest request) {
         validateBusinessRules(
@@ -83,6 +109,9 @@ public class ContractService {
         contractRepository.save(contract);
     }
 
+    /* ================= COMMAND: UPDATE ================= */
+
+    // Meglévő szerződés módosítása.
     @Transactional
     public void update(Long id, UpdateContractRequest request) {
         Contract contract = contractRepository.findById(id)
@@ -111,6 +140,9 @@ public class ContractService {
         contract.setCurrency(request.currency());
     }
 
+    /* ================= COMMAND: DELETE ================= */
+
+    // Szerződés törlése ID alapján.
     @Transactional
     public void delete(Long id) {
         Contract contract = contractRepository.findById(id)
@@ -121,6 +153,12 @@ public class ContractService {
         contractRepository.delete(contract);
     }
 
+    /* ================= BUSINESS VALIDATION ================= */
+
+    // Üzleti szabályok ellenőrzése:
+    // - határozott idejűnél kötelező endDate
+    // - határozatlannál nem lehet endDate
+    // - amount és currency együtt legyen töltve
     private void validateBusinessRules(Boolean fixedTerm,
                                        LocalDate startDate,
                                        LocalDate endDate,
@@ -166,6 +204,9 @@ public class ContractService {
         }
     }
 
+    /* ================= HELPER ================= */
+
+    // Üres stringekből nullt csinálunk, hogy ne tároljunk szemét adatot.
     private String normalize(String value) {
         if (value == null) {
             return null;
@@ -174,6 +215,8 @@ public class ContractService {
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
+
+    /* ================= MAPPERS ================= */
 
     private ContractResponse toResponse(Contract contract) {
         return new ContractResponse(
