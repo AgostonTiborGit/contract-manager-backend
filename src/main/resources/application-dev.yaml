@@ -10,6 +10,15 @@ spring:
     show-sql: true
     open-in-view: false
 
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
 logging:
   level:
     org.springframework.security: DEBUG
+
+app:
+  storage:
+    contract-files-dir: ./storage/contract-files

@@ -42,7 +42,7 @@ public class SecurityConfig {
 
                         // ===== CONTRACTS =====
                         .requestMatchers(HttpMethod.GET, "/api/contracts/**").hasAnyRole("USER", "ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/contracts").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/contracts/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/contracts/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/contracts/**").hasRole("ADMIN")
 
