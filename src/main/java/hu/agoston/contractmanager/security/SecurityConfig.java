@@ -31,14 +31,14 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth -> auth
 
-                        // ✅ Preflight
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        // ✅ ne védjük az /error-t, különben auth hibánál még egy kört fut
                         .requestMatchers("/error").permitAll()
 
                         // ===== ADMIN API =====
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // ===== AUTH =====
+                        .requestMatchers("/api/auth/**").authenticated()
 
                         // ===== CONTRACTS =====
                         .requestMatchers(HttpMethod.GET, "/api/contracts/**").hasAnyRole("USER", "ADMIN")
@@ -49,6 +49,7 @@ public class SecurityConfig {
                         // ===== PARTNERS =====
                         .requestMatchers(HttpMethod.GET, "/api/partners/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/partners").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/partners/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/partners/**").hasRole("ADMIN")
 
                         .anyRequest().authenticated()

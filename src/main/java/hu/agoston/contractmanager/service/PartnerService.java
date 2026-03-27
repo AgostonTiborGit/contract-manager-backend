@@ -54,6 +54,33 @@ public class PartnerService {
         return toResponse(saved);
     }
 
+    /* ================= UPDATE ================= */
+
+    @Transactional
+    public PartnerResponse update(Long id, CreatePartnerRequest request) {
+
+        Partner partner = partnerRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Partner not found"));
+
+        validateTaxNumberFormat(request.taxNumber());
+
+        String normalizedTaxNumber =
+                TaxNumberValidator.normalize(request.taxNumber());
+
+        if (partnerRepository.existsByTaxNumberAndIdNot(normalizedTaxNumber, id)) {
+            throw new BusinessException("Partner with this tax number already exists");
+        }
+
+        partner.setName(request.name());
+        partner.setTaxNumber(normalizedTaxNumber);
+        partner.setAddress(request.address());
+        partner.setEmail(request.email());
+        partner.setPhone(request.phone());
+
+        Partner saved = partnerRepository.save(partner);
+        return toResponse(saved);
+    }
+
     /* ================= DELETE ================= */
 
     @Transactional
@@ -64,17 +91,13 @@ public class PartnerService {
 
         long contractCount = contractRepository.countByPartnerId(partnerId);
 
-        // ha VAN szerződés → kötelező az IGEN
         if (contractCount > 0 && !"IGEN".equalsIgnoreCase(confirmation)) {
             throw new BusinessException(
                     "Partner has contracts. Confirmation 'IGEN' is required to delete."
             );
         }
 
-        // szerződések törlése
         contractRepository.deleteByPartnerId(partnerId);
-
-        // partner törlése
         partnerRepository.delete(partner);
     }
 

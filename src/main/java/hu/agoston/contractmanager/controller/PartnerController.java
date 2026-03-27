@@ -23,6 +23,12 @@ public class PartnerController {
         return partnerService.create(request);
     }
 
+    @PutMapping("/{id}")
+    public PartnerResponse update(@PathVariable Long id,
+                                  @RequestBody @Valid CreatePartnerRequest request) {
+        return partnerService.update(id, request);
+    }
+
     @GetMapping
     public List<PartnerResponse> findAll() {
         return partnerService.findAll();

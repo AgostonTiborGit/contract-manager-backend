@@ -9,5 +9,7 @@ public interface PartnerRepository extends JpaRepository<Partner, Long> {
 
     boolean existsByTaxNumber(String taxNumber);
 
+    boolean existsByTaxNumberAndIdNot(String taxNumber, Long id);
+
     Optional<Partner> findByTaxNumber(String taxNumber);
 }
