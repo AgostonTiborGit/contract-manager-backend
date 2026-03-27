@@ -1,6 +1,7 @@
 package hu.agoston.contractmanager.service;
 
 import hu.agoston.contractmanager.domain.Contract;
+import hu.agoston.contractmanager.domain.Currency;
 import hu.agoston.contractmanager.domain.Partner;
 import hu.agoston.contractmanager.dto.ContractDetailsResponse;
 import hu.agoston.contractmanager.dto.ContractResponse;
@@ -11,9 +12,11 @@ import hu.agoston.contractmanager.exception.BusinessException;
 import hu.agoston.contractmanager.exception.NotFoundException;
 import hu.agoston.contractmanager.repository.ContractRepository;
 import hu.agoston.contractmanager.repository.PartnerRepository;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -29,11 +32,9 @@ public class ContractService {
         this.partnerRepository = partnerRepository;
     }
 
-    /* ---------- QUERY ---------- */
-
     @Transactional(readOnly = true)
     public List<ContractResponse> getAll() {
-        return contractRepository.findAll()
+        return contractRepository.findAll(Sort.by(Sort.Direction.DESC, "startDate"))
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -49,12 +50,16 @@ public class ContractService {
         return toDetailsResponse(contract);
     }
 
-    /* ---------- COMMAND ---------- */
-
     @Transactional
     public void create(CreateContractRequest request) {
-
-        validateDates(request.startDate(), request.endDate());
+        validateBusinessRules(
+                request.fixedTerm(),
+                request.startDate(),
+                request.endDate(),
+                request.noticePeriodDays(),
+                request.amount(),
+                request.currency()
+        );
 
         Partner partner = partnerRepository.findById(request.partnerId())
                 .orElseThrow(() ->
@@ -62,9 +67,16 @@ public class ContractService {
                 );
 
         Contract contract = new Contract(
-                request.title(),
+                request.title().trim(),
+                normalize(request.referenceNumber()),
+                request.contractType(),
+                request.fixedTerm(),
                 request.startDate(),
                 request.endDate(),
+                request.noticePeriodDays(),
+                normalize(request.notes()),
+                request.amount(),
+                request.currency(),
                 partner
         );
 
@@ -73,69 +85,109 @@ public class ContractService {
 
     @Transactional
     public void update(Long id, UpdateContractRequest request) {
-
         Contract contract = contractRepository.findById(id)
                 .orElseThrow(() ->
                         new NotFoundException("Contract not found with id: " + id)
                 );
 
-        boolean active = isActive(contract);
+        validateBusinessRules(
+                request.fixedTerm(),
+                request.startDate(),
+                request.endDate(),
+                request.noticePeriodDays(),
+                request.amount(),
+                request.currency()
+        );
 
-        // title mindig módosítható
-        contract.setTitle(request.title());
-
-        // aktív szerződésnél dátum TILOS
-        if (active && (request.startDate() != null || request.endDate() != null)) {
-            throw new BusinessException("Active contract dates cannot be modified");
-        }
-
-        // nem aktív → dátumok módosíthatók
-        if (!active && request.startDate() != null && request.endDate() != null) {
-            validateDates(request.startDate(), request.endDate());
-            contract.setStartDate(request.startDate());
-            contract.setEndDate(request.endDate());
-        }
+        contract.setTitle(request.title().trim());
+        contract.setReferenceNumber(normalize(request.referenceNumber()));
+        contract.setContractType(request.contractType());
+        contract.setFixedTerm(request.fixedTerm());
+        contract.setStartDate(request.startDate());
+        contract.setEndDate(request.endDate());
+        contract.setNoticePeriodDays(request.noticePeriodDays());
+        contract.setNotes(normalize(request.notes()));
+        contract.setAmount(request.amount());
+        contract.setCurrency(request.currency());
     }
 
     @Transactional
     public void delete(Long id) {
-
         Contract contract = contractRepository.findById(id)
                 .orElseThrow(() ->
                         new NotFoundException("Contract not found with id: " + id)
                 );
 
-        if (isActive(contract)) {
-            throw new BusinessException("Active contract cannot be deleted");
-        }
-
         contractRepository.delete(contract);
     }
 
-    /* ---------- BUSINESS ---------- */
+    private void validateBusinessRules(Boolean fixedTerm,
+                                       LocalDate startDate,
+                                       LocalDate endDate,
+                                       Integer noticePeriodDays,
+                                       BigDecimal amount,
+                                       Currency currency) {
 
-    private boolean isActive(Contract contract) {
-        LocalDate today = LocalDate.now();
-        return !today.isBefore(contract.getStartDate())
-                && !today.isAfter(contract.getEndDate());
-    }
+        if (fixedTerm == null) {
+            throw new BusinessException("Fixed term flag is required");
+        }
 
-    private void validateDates(LocalDate startDate, LocalDate endDate) {
-        if (!startDate.isBefore(endDate)) {
-            throw new BusinessException(
-                    "Contract start date must be before end date"
-            );
+        if (startDate == null) {
+            throw new BusinessException("Start date is required");
+        }
+
+        if (Boolean.TRUE.equals(fixedTerm)) {
+            if (endDate == null) {
+                throw new BusinessException("End date is required for fixed-term contracts");
+            }
+
+            if (!startDate.isBefore(endDate)) {
+                throw new BusinessException("Contract start date must be before end date");
+            }
+        } else {
+            if (endDate != null) {
+                throw new BusinessException("End date must be empty for indefinite contracts");
+            }
+        }
+
+        if (noticePeriodDays != null && noticePeriodDays < 0) {
+            throw new BusinessException("Notice period days must be zero or greater");
+        }
+
+        boolean amountProvided = amount != null;
+        boolean currencyProvided = currency != null;
+
+        if (amountProvided != currencyProvided) {
+            throw new BusinessException("Amount and currency must be filled together");
+        }
+
+        if (amount != null && amount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BusinessException("Amount must be zero or greater");
         }
     }
 
-    /* ---------- MAPPERS ---------- */
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
 
     private ContractResponse toResponse(Contract contract) {
         return new ContractResponse(
                 contract.getId(),
                 contract.getTitle(),
+                contract.getReferenceNumber(),
+                contract.getContractType(),
+                contract.isFixedTerm(),
                 contract.getStartDate(),
                 contract.getEndDate(),
+                contract.getNoticePeriodDays(),
+                contract.getNotes(),
+                contract.getAmount(),
+                contract.getCurrency(),
                 toPartnerResponse(contract.getPartner())
         );
     }
@@ -144,8 +196,15 @@ public class ContractService {
         return new ContractDetailsResponse(
                 contract.getId(),
                 contract.getTitle(),
+                contract.getReferenceNumber(),
+                contract.getContractType(),
+                contract.isFixedTerm(),
                 contract.getStartDate(),
                 contract.getEndDate(),
+                contract.getNoticePeriodDays(),
+                contract.getNotes(),
+                contract.getAmount(),
+                contract.getCurrency(),
                 toPartnerResponse(contract.getPartner())
         );
     }
